@@ -1,31 +1,46 @@
 <?php
+/**
+ * Hapus produk — hanya menerima POST untuk mencegah penghapusan via link.
+ */
+
 require_once 'config/auth.php';
 require_once 'config/db.php';
+require_once 'config/helpers.php';
 
-if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header("Location: index.php"); exit;
+// Hanya izinkan POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: index.php');
+    exit;
 }
-$id = (int)$_GET['id'];
+
+csrf_verify();
+
+$id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+
+if (!$id) {
+    redirect('index.php', 'error', 'ID produk tidak valid.');
+}
 
 try {
-    $stmt = $pdo->prepare("SELECT * FROM furniture WHERE id = :id");
+    // Ambil data produk sebelum dihapus (untuk nama dan path gambar)
+    $stmt = $pdo->prepare('SELECT id, name, image_path FROM furniture WHERE id = :id');
     $stmt->execute([':id' => $id]);
     $item = $stmt->fetch();
 
     if (!$item) {
-        header("Location: index.php?status=error&message=Produk+tidak+ditemukan"); exit;
+        redirect('index.php', 'error', 'Produk tidak ditemukan.');
     }
 
-    if (!empty($item['image_path']) && file_exists($item['image_path'])) {
-        @unlink($item['image_path']);
-    }
+    // Hapus file gambar dari disk jika ada
+    delete_image($item['image_path']);
 
-    $pdo->prepare("DELETE FROM furniture WHERE id = :id")->execute([':id' => $id]);
+    // Hapus record dari database
+    $pdo->prepare('DELETE FROM furniture WHERE id = :id')
+        ->execute([':id' => $id]);
 
-    header("Location: index.php?status=success&message=Produk+" . urlencode($item['name']) . "+berhasil+dihapus");
-    exit;
+    redirect('index.php', 'success', 'Produk "' . $item['name'] . '" berhasil dihapus.');
 
-} catch (\PDOException $e) {
-    header("Location: index.php?status=error&message=Gagal+menghapus:+" . urlencode($e->getMessage()));
-    exit;
+} catch (PDOException $e) {
+    error_log('Delete product failed: ' . $e->getMessage());
+    redirect('index.php', 'error', 'Gagal menghapus produk. Silakan coba lagi.');
 }
