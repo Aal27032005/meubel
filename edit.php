@@ -1,6 +1,7 @@
 <?php
 require_once 'config/auth.php';
 require_once 'config/db.php';
+require_once 'config/helpers.php';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: index.php"); exit;
@@ -28,6 +29,8 @@ $data = [
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_verify();
+
     foreach ($data as $k => $_) $data[$k] = trim($_POST[$k] ?? '');
 
     if (empty($data['sku']))      $errors['sku']      = 'SKU wajib diisi.';
@@ -125,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <form action="edit.php?id=<?php echo $id; ?>" method="POST" enctype="multipart/form-data">
+                <?php echo csrf_field(); ?>
                 <div class="card shadow-sm">
                     <div class="card-header py-3">
                         <h5 class="mb-0 fw-bold" style="color:var(--brown-dark)">

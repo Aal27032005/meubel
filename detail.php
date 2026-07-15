@@ -1,6 +1,7 @@
 <?php
 require_once 'config/auth.php';
 require_once 'config/db.php';
+require_once 'config/helpers.php';
 
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header("Location: index.php"); exit;
